@@ -47,16 +47,16 @@
    npm run db:remote
    ```
 
-5. 講師だけが知るリセットコードをCloudflare Secretへ登録します。入力値はGitHubやファイルへ保存されません。
-
-   ```powershell
-   npx wrangler secret put RESET_TOKEN
-   ```
-
-6. 公開します。
+5. まず公開します。
 
    ```powershell
    npm run deploy
+   ```
+
+6. 講師だけが知るリセットコードをCloudflare Secretへ登録します。入力値はGitHubやファイルへ保存されません。この操作で新しいWorkerバージョンが反映されます。
+
+   ```powershell
+   npx wrangler secret put RESET_TOKEN
    ```
 
 表示された `workers.dev` URLを複数PCで開けば、同じ在庫を共有できます。参加者にはリセットコードを配りません。
