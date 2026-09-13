@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   stock INTEGER NOT NULL CHECK (stock >= 0),
   threshold INTEGER NOT NULL CHECK (threshold >= 0),
   part_no TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'none' CHECK (status IN ('none', 'ordered', 'received')),
+  order_qty INTEGER NOT NULL DEFAULT 0 CHECK (order_qty >= 0),
+  ordered_at TEXT,
   display_order INTEGER NOT NULL,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -30,4 +33,3 @@ VALUES
   (4, 'ペーパータオル', '衛生・消耗品', '袋', 8, 3, 'DEMO-04', 4),
   (5, '手指消毒剤', '衛生・消耗品', '本', 3, 2, 'DEMO-05', 5),
   (6, 'ティッシュ', '衛生・消耗品', '箱', 0, 2, 'DEMO-06', 6);
-

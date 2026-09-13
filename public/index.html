@@ -2,55 +2,28 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>共有在庫｜研修用</title>
+  <title>在庫管理｜研修用クリニック</title>
   <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
 </head>
 <body>
-  <header>
-    <div>
-      <p class="eyebrow">研修用・架空データ</p>
-      <h1>共有在庫</h1>
-      <p>参加者全員で同じ6品目を確認します</p>
-    </div>
-    <span id="connection" class="connection loading">接続確認中</span>
-  </header>
-
+  <div class="demo-note">研修用・架空6品目／共有保存／外部送信なし。参加者全員で同じ在庫を確認します。</div>
+  <header><div class="brand"><div class="brand-mark">▱</div><div><h1>在庫管理</h1><p>研修用クリニック</p></div></div></header>
+  <nav class="tabs" aria-label="機能">
+    <button data-tab="inventory" class="active">◇ 在庫一覧</button>
+    <button data-tab="orders">▣ 発注リスト <b id="order-badge">0</b></button>
+    <button data-tab="tally">−＋ 使った・棚卸し</button>
+    <button data-tab="master">✎ 品目マスタ</button>
+    <button data-tab="purchase">￥ 仕入集計</button>
+    <button data-tab="settings">♧ 通知設定</button>
+  </nav>
   <main>
-    <section class="toolbar" aria-label="参加者情報">
-      <label>表示名 <input id="actor" maxlength="40" placeholder="例：A班 佐藤"></label>
-      <button id="reload" class="secondary" type="button">最新の状態に更新</button>
-      <span id="updated" aria-live="polite"></span>
-    </section>
-
-    <div id="message" class="message" role="status" aria-live="polite"></div>
-    <section id="inventory" class="inventory" aria-label="在庫一覧"></section>
-
-    <section class="panel">
-      <div class="panel-heading">
-        <div><p class="eyebrow">直近30件</p><h2>操作履歴</h2></div>
-        <button id="reset" class="danger-outline" type="button">講師用：初期値へ戻す</button>
-      </div>
-      <div id="activity" class="activity"></div>
-    </section>
+    <section class="toolbar"><input id="search" type="search" placeholder="品目名で検索"><div class="legend"><span class="red">●</span> 基準割れ（要発注） <span class="yellow">●</span> 残りわずか <span class="green">●</span> 十分</div></section>
+    <div id="message" role="status" aria-live="polite"></div>
+    <section id="screen"></section>
   </main>
-
-  <template id="item-template">
-    <article class="item-card">
-      <div class="item-top">
-        <div><p class="part-no"></p><h2 class="name"></h2></div>
-        <span class="status"></span>
-      </div>
-      <div class="count"><strong class="stock"></strong><span class="unit"></span></div>
-      <p class="threshold"></p>
-      <div class="actions">
-        <button class="use" type="button">1つ使う</button>
-        <button class="receive secondary" type="button">1つ入庫</button>
-      </div>
-    </article>
-  </template>
-  <script src="/app.js" defer></script>
+  <dialog id="reset-dialog"><form method="dialog"><h2>講師用リセット</h2><p>共有在庫と操作履歴を初期値へ戻します。</p><input id="reset-token" type="password" placeholder="リセットコード"><div class="dialog-actions"><button value="cancel" class="secondary">キャンセル</button><button id="reset-confirm" value="default" class="danger">初期値へ戻す</button></div></form></dialog>
 </body>
 </html>
-

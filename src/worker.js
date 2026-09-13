@@ -13,7 +13,9 @@ function cleanActor(value) {
 async function listState(db) {
   const [itemsResult, logResult] = await Promise.all([
     db.prepare(`SELECT id, name, category, unit, stock, threshold,
-      part_no AS partNo, updated_at AS updatedAt
+      part_no AS partNo,
+      status, order_qty AS orderQty, ordered_at AS orderedAt,
+      updated_at AS updatedAt
       FROM inventory_items ORDER BY display_order`).all(),
     db.prepare(`SELECT id, item_name AS itemName, delta, stock_after AS stockAfter,
       actor, action, created_at AS createdAt
@@ -40,7 +42,8 @@ async function adjustStock(request, env, itemId) {
     SET stock = stock + ?1, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?2 AND stock + ?1 >= 0
     RETURNING id, name, category, unit, stock, threshold,
-      part_no AS partNo, updated_at AS updatedAt`)
+      part_no AS partNo, status, order_qty AS orderQty, ordered_at AS orderedAt,
+      updated_at AS updatedAt`)
     .bind(delta, itemId).first();
 
   if (!result) {
@@ -58,6 +61,31 @@ async function adjustStock(request, env, itemId) {
   return json({ item: result });
 }
 
+async function updateOrder(request, env, itemId) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "入力内容を読み取れませんでした。" }, 400); }
+  const action = String(body.action || "");
+  const actor = cleanActor(body.actor);
+  const qty = Number(body.quantity);
+  if (!["ordered", "received", "cancel"].includes(action)) return json({ error: "発注操作が不正です。" }, 400);
+  if (action === "ordered" && (!Number.isInteger(qty) || qty < 1)) return json({ error: "発注数は1以上で入力してください。" }, 400);
+  const status = action === "cancel" ? "none" : action;
+  const orderQty = action === "cancel" ? 0 : qty;
+  const item = await env.DB.prepare(`UPDATE inventory_items
+    SET status = ?, order_qty = ?, ordered_at = CASE WHEN ? = 'none' THEN NULL ELSE CURRENT_TIMESTAMP END,
+      updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    RETURNING id, name, category, unit, stock, threshold, part_no AS partNo,
+      status, order_qty AS orderQty, ordered_at AS orderedAt, updated_at AS updatedAt`)
+    .bind(status, orderQty, status, itemId).first();
+  if (!item) return json({ error: "品目が見つかりません。" }, 404);
+  await env.DB.prepare(`INSERT INTO activity_log
+    (item_id, item_name, delta, stock_after, actor, action)
+    VALUES (?, ?, 0, ?, ?, ?)`)
+    .bind(item.id, item.name, item.stock, actor, action === "ordered" ? `発注 ${qty}${item.unit}` : action === "received" ? "入荷済み" : "発注取消")
+    .run();
+  return json({ item });
+}
+
 async function resetInventory(request, env) {
   if (!env.RESET_TOKEN) {
     return json({ error: "講師用リセットが設定されていません。" }, 503);
@@ -70,7 +98,8 @@ async function resetInventory(request, env) {
   const statements = [];
   for (const [id, stock] of INITIAL_STOCK) {
     statements.push(env.DB.prepare(`UPDATE inventory_items
-      SET stock = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(stock, id));
+      SET stock = ?, status = 'none', order_qty = 0, ordered_at = NULL,
+        updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(stock, id));
   }
   statements.push(env.DB.prepare("DELETE FROM activity_log"));
   statements.push(env.DB.prepare(`INSERT INTO activity_log
@@ -89,6 +118,9 @@ async function api(request, env, url) {
   if (request.method === "POST" && adjustment) {
     return adjustStock(request, env, Number(adjustment[1]));
   }
+
+  const order = url.pathname.match(/^\/api\/items\/(\d+)\/order$/);
+  if (request.method === "POST" && order) return updateOrder(request, env, Number(order[1]));
 
   if (request.method === "POST" && url.pathname === "/api/reset") {
     return resetInventory(request, env);
@@ -119,4 +151,3 @@ export default {
     }
   }
 };
-
