@@ -86,6 +86,43 @@ async function updateOrder(request, env, itemId) {
   return json({ item });
 }
 
+async function saveItem(request, env, itemId = null) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "入力内容を読み取れませんでした。" }, 400); }
+  const name = String(body.name || "").trim().slice(0, 80);
+  const category = String(body.category || "衛生・消耗品").trim().slice(0, 40);
+  const unit = String(body.unit || "").trim().slice(0, 10);
+  const partNo = String(body.partNo || "").trim().slice(0, 40);
+  const stock = Number(body.stock), threshold = Number(body.threshold);
+  if (!name || !unit || !partNo || !Number.isInteger(stock) || stock < 0 || !Number.isInteger(threshold) || threshold < 0) {
+    return json({ error: "品目名・単位・型番・数量を正しく入力してください。" }, 400);
+  }
+  const actor = cleanActor(body.actor);
+  try {
+    let item;
+    if (itemId === null) {
+      item = await env.DB.prepare(`INSERT INTO inventory_items
+        (name, category, unit, stock, threshold, part_no, display_order)
+        VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM inventory_items))
+        RETURNING id, name, category, unit, stock, threshold, part_no AS partNo,
+          status, order_qty AS orderQty, ordered_at AS orderedAt, updated_at AS updatedAt`)
+        .bind(name, category, unit, stock, threshold, partNo).first();
+    } else {
+      item = await env.DB.prepare(`UPDATE inventory_items SET name=?, category=?, unit=?, stock=?, threshold=?, part_no=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+        RETURNING id, name, category, unit, stock, threshold, part_no AS partNo,
+          status, order_qty AS orderQty, ordered_at AS orderedAt, updated_at AS updatedAt`)
+        .bind(name, category, unit, stock, threshold, partNo, itemId).first();
+    }
+    if (!item) return json({ error: "品目が見つかりません。" }, 404);
+    await env.DB.prepare(`INSERT INTO activity_log (item_id,item_name,delta,stock_after,actor,action) VALUES (?,?,0,?,?,?)`)
+      .bind(item.id, item.name, item.stock, actor, itemId === null ? "品目追加" : "品目編集").run();
+    return json({ item });
+  } catch (error) {
+    if (String(error.message || error).includes("UNIQUE")) return json({ error: "品目名または型番が重複しています。" }, 409);
+    throw error;
+  }
+}
+
 async function resetInventory(request, env) {
   if (!env.RESET_TOKEN) {
     return json({ error: "講師用リセットが設定されていません。" }, 503);
@@ -121,6 +158,10 @@ async function api(request, env, url) {
 
   const order = url.pathname.match(/^\/api\/items\/(\d+)\/order$/);
   if (request.method === "POST" && order) return updateOrder(request, env, Number(order[1]));
+
+  const item = url.pathname.match(/^\/api\/items(?:\/(\d+))?$/);
+  if (request.method === "POST" && item) return saveItem(request, env, item[1] ? Number(item[1]) : null);
+  if (request.method === "PUT" && item) return saveItem(request, env, item[1] ? Number(item[1]) : null);
 
   if (request.method === "POST" && url.pathname === "/api/reset") {
     return resetInventory(request, env);
