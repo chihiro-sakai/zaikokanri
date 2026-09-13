@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>共有在庫｜研修用</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <p class="eyebrow">研修用・架空データ</p>
+      <h1>共有在庫</h1>
+      <p>参加者全員で同じ6品目を確認します</p>
+    </div>
+    <span id="connection" class="connection loading">接続確認中</span>
+  </header>
+
+  <main>
+    <section class="toolbar" aria-label="参加者情報">
+      <label>表示名 <input id="actor" maxlength="40" placeholder="例：A班 佐藤"></label>
+      <button id="reload" class="secondary" type="button">最新の状態に更新</button>
+      <span id="updated" aria-live="polite"></span>
+    </section>
+
+    <div id="message" class="message" role="status" aria-live="polite"></div>
+    <section id="inventory" class="inventory" aria-label="在庫一覧"></section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div><p class="eyebrow">直近30件</p><h2>操作履歴</h2></div>
+        <button id="reset" class="danger-outline" type="button">講師用：初期値へ戻す</button>
+      </div>
+      <div id="activity" class="activity"></div>
+    </section>
+  </main>
+
+  <template id="item-template">
+    <article class="item-card">
+      <div class="item-top">
+        <div><p class="part-no"></p><h2 class="name"></h2></div>
+        <span class="status"></span>
+      </div>
+      <div class="count"><strong class="stock"></strong><span class="unit"></span></div>
+      <p class="threshold"></p>
+      <div class="actions">
+        <button class="use" type="button">1つ使う</button>
+        <button class="receive secondary" type="button">1つ入庫</button>
+      </div>
+    </article>
+  </template>
+  <script src="/app.js" defer></script>
+</body>
+</html>
+
